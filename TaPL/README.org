@@ -1,0 +1,8 @@
+#+title: Readme
+
+My notes in reading Types and Programming Languages(TaPL).
+
+* REFERENCE
+
+- https://www.cis.upenn.edu/~bcpierce/tapl/
+- https://ocaml.org/
