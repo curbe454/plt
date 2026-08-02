@@ -1,0 +1,6 @@
+.DS_Store
+.idea
+*.log
+tmp/
+
+01-intro.lhs

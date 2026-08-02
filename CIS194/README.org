@@ -1,0 +1,11 @@
+#+title: Readme
+
+My notes to learn https://www.seas.upenn.edu/~cis194/spring13/lectures.html.
+
+* Test
+
+Using doctest(https://hackage.haskell.org/package/doctest) in this course.
+
+* Lecture
+
+https://www.engineering.upenn.edu/~cis1940/spring13/lectures/01-intro.html
