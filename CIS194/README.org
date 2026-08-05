@@ -4,7 +4,8 @@ My notes to learn https://www.seas.upenn.edu/~cis194/spring13/lectures.html.
 
 * Test
 
-Using doctest(https://hackage.haskell.org/package/doctest) in this course.
+Using doctest(https://hackage.haskell.org/package/doctest) in homework. Check by `doctest -isrc $(ls hw*.hs)`.
+# Well, I use this weird cmd because I use PowerShell sometimes. This cmd is compatible in both POSIX shell and PowerShell.
 
 * Lecture
 
