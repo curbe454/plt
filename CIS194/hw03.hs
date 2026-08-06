@@ -37,7 +37,7 @@ nths n xs =
 nths' :: Int -> [a] -> [a]
 -- The below `last` won't raise error. This is why partial functons exists.
 nths' n
-  | n == 0    = id
+  | n <= 0    = id
   | otherwise = map last . chunksOfDrop n
 
 
@@ -107,7 +107,7 @@ histogram = showThem . histogramDataFrom
           where len = maximum dat
 
 -- |
--- >>> showBars 3 [1,2,3]
+-- >>> map reverse . showBars 3 $ [1,2,3]
 -- ["0=*  ","1=** ","2=***"]
 showBars :: Int -> [Int] -> [String]
 showBars len xs =
