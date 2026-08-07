@@ -4,9 +4,5 @@ My notes to learn https://www.seas.upenn.edu/~cis194/spring13/lectures.html.
 
 * Test
 
-Using doctest(https://hackage.haskell.org/package/doctest) in homework. Check by `doctest -isrc $(ls hw*.hs)`.
-# Well, I use this weird cmd because I use PowerShell sometimes. This cmd is compatible in both POSIX shell and PowerShell.
-
-* Lecture
-
-https://www.engineering.upenn.edu/~cis1940/spring13/lectures/01-intro.html
+Using doctest(https://hackage.haskell.org/package/doctest) in homework.
+# Check by `find . -name hw*.hs -exec doctest -isrc {}\;` or `gci hw*.hs | % { doctest -isrc "$_" }`.

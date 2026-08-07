@@ -1,3 +1,5 @@
 cradle:
   direct:
-    arguments: ["-isrc"]
+    arguments:
+      - -isrc
+      - -package containers
