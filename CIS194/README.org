@@ -6,3 +6,13 @@ My notes to learn https://www.seas.upenn.edu/~cis194/spring13/lectures.html.
 
 Using doctest(https://hackage.haskell.org/package/doctest) in homework.
 # Check by `find . -name hw*.hs -exec doctest -isrc {}\;` or `gci hw*.hs | % { doctest -isrc "$_" }`.
+#+TODO: using project manager?
+
+* Reference
+
+- https://www.seas.upenn.edu/~cis194/spring13/lectures.html
+- https://hoogle.haskell.org
+- https://learnyouahaskell.github.io
+- https://codeberg.org/jaror/real-world-haskell
+- https://wiki.haskell.org
+- https://ncatlab.org/
