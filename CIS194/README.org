@@ -2,6 +2,14 @@
 
 My notes to learn https://www.seas.upenn.edu/~cis194/spring13/lectures.html.
 
+Haskell leads me to write down every small steps to a computing recipe and reminds me to considering all possiblilites locally other than current global state and any side effects.
+
+* Notes
+
+#+begin_src haskell
+(op `on` ($ a)) fx fy == liftA2 op fx fy a
+#+end_src
+
 * Test
 
 Using doctest(https://hackage.haskell.org/package/doctest) in homework.
@@ -16,3 +24,4 @@ Using doctest(https://hackage.haskell.org/package/doctest) in homework.
 - https://codeberg.org/jaror/real-world-haskell
 - https://wiki.haskell.org
 - https://ncatlab.org/
+

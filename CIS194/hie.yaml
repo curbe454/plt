@@ -2,5 +2,7 @@ cradle:
   direct:
     arguments:
       - -isrc
+      - -ihw11
       - -package containers
       - -package mtl
+      - -package MonadRandom
