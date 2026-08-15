@@ -5,3 +5,4 @@ cradle:
       - -ihw11
       - -package containers
       - -package mtl
+      - -package MonadRandom
