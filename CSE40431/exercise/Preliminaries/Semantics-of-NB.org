@@ -1,0 +1,7 @@
+#+title: Semantics Of NB
+
++ *Exercise.* Do the “only if” direction of Exercise 3.5.17: show that if `t ⟶* v` and `v` is a value, then `t ⇓ v`.
+
+  Observe that applying rule B-IfTrue on `if t_1 then t_2 else t_3` is to applying E-If consistantly so that `t_1 →* v_1` with evaluating `t_3 →* v_3`; the same as B-IfFalse.
+
+  For untyped B, one big difference to small-step rules is that some conditions requires the evaluation result should be a `nv`, such as E-Succ with B-Succ. Since `t →* v`, evaluations won't stuck on something like `succ false`. Then it's obvious that for each big-step evalution rule in untyped B, the instance is obtiand from consistantly applying related rules in small-step semantics.
