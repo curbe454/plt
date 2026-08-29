@@ -6,4 +6,4 @@ tmp/
 *.tar.gz
 *.tar
 
-arith/
+ts/

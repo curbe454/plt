@@ -1,0 +1,614 @@
+#+title: Exercise
+#+property: header-args :results output :noweb yes
+#+property: header-args:ocaml :results value
+#+property: header-args:scheme :session *scheme-exercise*
+
+* 4 An ML Implementation of Arithmetic Expressions
+
+* 5 The Untyped Lambda-Calculus
+
+** ligatures/Conceal
+
+I use ligatures to let editors render lambda expressions in progamming languages more like it's form in math. By `ligature` package in eamcs, or `Conceal` highlight group in vim.
+
+*** doomemacs
+
+Enable `(ligatures +extras)`.
+
+#+begin_src emacs-lisp
+(plist-put +ligatures-extra-symbols :lambda_apply ".")
+
+(set-ligatures! 'tuareg-mode
+  :lambda "fun" :lambda_apply "->")
+
+
+(add-hook! '(scheme-mode-hook racket-mode-hook racket-hash-lang-mode-hook emacs-lisp-mode-hook)
+  #'my/set-prettify-symbols-compose-predicate)
+(set-ligatures! '(scheme-mode racket-mode racket-hash-lang-mode)
+  :def "define" :lambda "lambda (" :lambda_apply ")")
+
+
+(defun my/set-prettify-symbols-compose-predicate ()
+  (setq-local prettify-symbols-compose-predicate
+              'my/lisp-prettify-symbols-compose-p))
+
+(defun my/is-lambda-close-paren-p (pos)
+  (save-excursion
+    (goto-char pos)
+    (condition-case nil
+        (let ((open-pos (scan-lists pos -1 1)))
+          (and open-pos
+               (goto-char open-pos)
+               (looking-back "lambda[ \t(]*" (line-beginning-position))))
+      (error nil))))
+
+(defun my/lisp-prettify-symbols-compose-p (start end match)
+  "My lisp config on `prettify-symbols-default-compose-p'."
+  (if (string= (buffer-substring-no-properties start end) ")")
+      (my/is-lambda-close-paren-p start)
+      (prettify-symbols-default-compose-p start end match)))
+#+end_src
+
+*** vim
+
+#+begin_src vim
+augroup Conceal
+  au!
+  au FileType * hi clear Conceal | hi link Conceal Keyword
+  au FileType ocaml      call matchadd("Conceal", '\vfun\ze\s+.{-}-\>', 10, -1, { "conceal": 'λ' })
+                \ |      call matchadd("Conceal", '\vfun\s+.{-}\zs-\>', 10, -1, { "conceal": '.' })
+  au FileType racket,scheme call matchadd("Conceal", '\<lambda\>\s*(',         10, -1, { "conceal": 'λ' })
+                        \ | call matchadd("Conceal", '\v<lambda>[^)]{-}\zs\)', 10, -1, { "conceal": '.' })
+                        \ | call matchadd("Conceal", '\<define\>',             10, -1, { "conceal": 'ƒ' })
+augroup END
+#+end_src
+
+** 5.2 Programming in the Lambda-Calculus
+
+*** 5.2.1
+
+https://en.wikipedia.org/wiki/Lambda_calculus
+
+#+begin_src ocaml :noweb-ref bool :results output
+let tru = fun t -> fun f -> t
+let fls = fun t -> fun f -> f
+
+let test = fun b -> fun c -> fun a -> b c a
+
+let and' = fun a -> fun b -> a b fls
+let or'  = fun a -> fun b -> a tru b
+let not' = fun a -> a fls tru
+let xor' = fun a -> fun b -> and' (or' a b) (not' (and' a b))
+#+end_src
+
+#+RESULTS:
+: val tru : 'a -> 'b -> 'a = <fun>
+: val fls : 'a -> 'b -> 'b = <fun>
+: val test : ('a -> 'b -> 'c) -> 'a -> 'b -> 'c = <fun>
+: val and' : ('a -> ('b -> 'c -> 'c) -> 'd) -> 'a -> 'd = <fun>
+: val or' : (('a -> 'b -> 'a) -> 'c -> 'd) -> 'c -> 'd = <fun>
+
+#+begin_src ocaml
+<<bool>>
+let results = [xor' tru tru; xor' tru fls; xor' fls tru; xor' fls fls]
+  |> List.map @@ fun b -> test b "true" "false"
+#+end_src
+
+#+RESULTS:
+| false | true | true | false |
+
+These type annotaions are so scary... Let me try scheme.
+
+#+begin_src scheme
+(define tru (lambda (t) (lambda (_f) t)))
+(define fls (lambda (_t) (lambda (f) f)))
+
+(define test (lambda (b c a) ((b c) a)))
+
+(define and- (lambda (a b) (test a b fls)))
+(define or-  (lambda (a b) ((a tru) b)))
+(define not  (lambda (a) ((a fls) tru)))
+(define xor  (lambda (a b) (and- (or- a b) (not (and- a b)))))
+
+(display (map (lambda (b) (test b #t #f))
+              (list
+               (xor tru tru)
+               (xor tru fls)
+               (xor fls tru)
+               (xor fls fls))))
+#+end_src
+
+#+RESULTS:
+: (#f #t #t #f)
+
+To decrease more parentheses I didn't curry functions. While I keep the `lambda`s other than make use of `define` to keep a good form.
+
+*** pair
+
+#+begin_src ocaml :noweb-ref pair
+let left  = fun t -> fun f -> t
+let right = fun t -> fun f -> f
+
+let pair = fun a -> fun b -> fun f -> f a b
+let fst  = fun p -> p left
+let snd  = fun p -> p right
+#+end_src
+
+#+begin_src ocaml
+<<pair>>
+let result = pair 1 2 |> fst
+#+end_src
+
+#+RESULTS:
+: 1
+
+*** Church Numerals
+
+#+begin_src ocaml :noweb-ref church :results output
+let zero = fun s -> fun z -> z
+let one  = fun s -> fun z -> s z
+let two  = fun s -> fun z -> s (s z)
+let scc  = fun n -> fun s -> fun z -> s (n s z)
+
+let church_to_int n = n (Int.add 1) 0
+let rec church_of_int n = if n<=0 then zero else scc @@ church_of_int (n-1)
+#+end_src
+
+#+RESULTS:
+: val zero : 'a -> 'b -> 'b = <fun>
+: val one : ('a -> 'b) -> 'a -> 'b = <fun>
+: val two : ('a -> 'a) -> 'a -> 'a = <fun>
+: val scc : (('a -> 'b) -> 'c -> 'a) -> ('a -> 'b) -> 'c -> 'b = <fun>
+
+#+begin_src ocaml
+<<church>>
+let x = church_of_int 6 |> church_to_int
+#+end_src
+
+#+RESULTS:
+: 6
+
+*** 5.2.2
+
+#+begin_src ocaml :noweb-ref church
+let scc' = fun n -> fun s -> fun z -> (n s) (s z)
+#+end_src
+
+#+begin_src ocaml
+<<church>>
+let result = scc' @@ scc' zero |> church_to_int
+#+end_src
+
+#+RESULTS:
+: 2
+
+*** plus / times
+
+#+begin_src ocaml :noweb-ref church
+let plus  = fun m-> fun n-> fun s-> fun z-> m s (n s z)
+let times = fun m-> fun n-> m (plus n) zero
+#+end_src
+
+#+begin_src ocaml
+<<church>>
+let x = plus two (times two two) |> church_to_int
+#+end_src
+
+#+RESULTS:
+: 6
+
+*** 5.2.3
+
+#+begin_src ocaml :results value
+<<church>>
+let times' m n = fun s-> fun z-> m (n s) z
+let x = times' two two |> church_to_int
+#+end_src
+
+#+RESULTS:
+: 4
+
+*** 5.2.4
+
+Observe that $b^e$ is `(b (b (b (...(b s)))) z` (e times b occurs here), which is the same form of church encoding.
+
+#+begin_src ocaml :noweb-ref church :results value
+let pow b e = fun s-> fun z-> (e b s) z
+let pow' b e = e (times b) one
+#+end_src
+
+Notice that there's a point-free form: src_ocaml[:exports code]{let pow'' b e = fun s-> e b s}.
+
+#+begin_src ocaml
+<<church>>
+let x =
+  [
+    pow' two (scc two);
+    pow  two (scc two);
+  ]
+  |> List.map church_to_int
+#+end_src
+
+#+RESULTS:
+| 8 | 8 |
+
+In fact, I thought for kind of a long time.
+
+*** iszero
+
+#+begin_src ocaml :noweb-ref church :results none
+<<bool>>
+let iszro = fun m-> m (fun s-> fls) tru
+let church_iszero m = m (fun s-> false) true
+#+end_src
+
+*** pred
+
+#+begin_src ocaml :noweb-ref church
+<<pair>>
+let zz = pair zero zero
+let ss = fun p-> pair (snd p) (scc (snd p))
+let prd = fun m-> fst (m ss zz)
+#+end_src
+
+#+begin_src ocaml
+<<church>>
+let x = prd two |> church_to_int
+#+end_src
+
+#+RESULTS:
+: 1
+
+#+begin_src ocaml
+<<church>>
+let x = prd (prd two) |> church_to_int
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Line 34, characters 12-21:
+34 | let x = prd (prd two) |> church_to_int;;
+                 ^^^^^^^^^
+Error: This expression has type ('a -> 'a) -> 'a -> 'a
+       but an expression was expected of type
+         ((('b -> 'c -> 'c) -> ('d -> 'e) -> 'f -> 'd) ->
+          ((('d -> 'e) -> 'f -> 'd) -> (('d -> 'e) -> 'f -> 'e) -> 'g) -> 'g) ->
+         (((('a -> 'a) -> 'a -> 'a) ->
+           (('a -> 'a) -> 'a -> 'a) -> ('a -> 'a) -> 'a -> 'a) ->
+          ('a -> 'a) -> 'a -> 'a) ->
+         ('h -> 'i -> 'h) -> 'j
+Hint: This function application is partial, maybe some arguments are missing.
+#+end_example
+
+I know that it will crash someday because of type inferring, although I don't know why.
+
+Maybe I will know after reading the book.
+
+- [ ] TODO: Why?
+
+*** scheme
+
+This would be the most times to hate parentheses.
+
+#+begin_src scheme :noweb-ref utlc-bool
+(define tru (lambda (t) (lambda (f) t)))
+(define fls (lambda (t) (lambda (f) f)))
+
+(define (test b c a) ((b c) a))
+(define (and- a b) ((a b) fls))
+(define (or- a b) ((a b) tru))
+(define (not- a) ((a fls) tru))
+
+(define (utlc->bool b) (test b #t #f))
+#+end_src
+
+#+begin_src scheme :noweb-ref utlc-pair
+(define (pair a b) (lambda (f) ((f a) b)))
+(define (fst p) (p (lambda (a) (lambda (b) a))))
+(define (snd p) (p (lambda (a) (lambda (b) b))))
+#+end_src
+
+#+begin_src scheme :noweb-ref utlc-church
+(define zero (lambda (s) (lambda (z) z)))
+(define one (lambda (s) (lambda (z) (s z))))
+(define two (lambda (s) (lambda (z) (s (s z)))))
+(define (scc n) (lambda (s) (lambda (z) (s ((n s) z)))))
+
+(define (church->int n) ((n (lambda (x) (+ x 1))) 0))
+(define (int->church n) (if (<= n 0) zero (scc (int->church (- n 1)))))
+(define (churches . ns) (map church->int ns))
+
+<<utlc-bool>>
+(define (iszro n) ((n (lambda (z) fls)) tru))
+
+<<utlc-pair>>
+(define zz (pair zero zero))
+(define (ss p) (pair (snd p) (scc (snd p))))
+(define (prd n) (fst ((n ss) zz)))
+
+(define (add a b) (lambda (s) (lambda (z) ((a s) ((b s) z)))))
+(define (times a b) (lambda (s) (lambda (z) ((a (b s)) z))))
+#+end_src
+
+#+begin_src scheme
+<<utlc-church>>
+(display (churches
+          (prd (prd (prd two)))
+          (scc (prd two))))
+#+end_src
+
+#+RESULTS:
+: (0 2)
+
+*** 5.2.5
+
+Same strategy with Exercise 5.2.4, it's `prd (prd (prd ... (prd m)))` with `prd` occurs n times.
+
+#+begin_src scheme :noweb-ref utlc-church
+(define (sub m n) ((n prd) m))
+#+end_src
+
+#+begin_src scheme
+<<utlc-church>>
+(display (churches
+          (sub (int->church 7) (int->church 5))))
+#+end_src
+
+#+RESULTS:
+: (2)
+
+*** 5.2.6
+
+`prd n` => `fst (n ss zz)` => `fst (ss (ss (ss (... zz))))`.
+
+$O(n)$.
+
+*** 5.2.7
+
+#+begin_src scheme :noweb-ref utlc-church
+(define (equal m n) (and- (iszro (sub m n))
+                     (iszro (sub n m))))
+#+end_src
+
+#+begin_src scheme
+<<utlc-church>>
+(display (map utlc->bool (list
+                          (equal two two)
+                          (equal two one)
+                          (equal one two))))
+#+end_src
+
+#+RESULTS:
+: (#t #f #f)
+
+*** 5.2.8
+
+#+begin_src scheme :noweb-ref utlc-list
+<<utlc-church>>
+(define nil          (lambda (c) (lambda (z) z)))
+(define (single x)   (lambda (c) (lambda (z) ((c x) z))))
+(define (couple x y) (lambda (c) (lambda (z) ((c x) ((c y) z)))))
+
+(define (isnil l) ((l (lambda (x) (lambda (z) fls))) tru))
+(define (ucons h t) (lambda (c) (lambda (z) ((c h) ((t c) z)))))
+(define ucar fst)
+(define (ucdr l) (fst ((ucar ((l lcc) lzz)) lzz)))
+
+(define lzz (pair nil nil))
+(define lcc (lambda (x) (lambda (t)
+             (let ((p ((ucar t) lzz)))
+               (ucons (pair (snd p) (ucons x (snd p))) t)))))
+
+(define (uforce l) (l '_))
+(define (foldr f l z) ((l f) z))
+
+(define (utlc->list us)
+  ((us (lambda (e) (lambda (l) (cons e l)))) '()))
+#+end_src
+
+#+begin_src scheme
+<<utlc-list>>
+(display (map utlc->list (list
+                          nil
+                          (ucons one nil)
+                          (couple 1 2)
+                          (ucons 1 nil)
+                          (ucons 0 (ucons 1 (ucons 2 nil)))
+                          (ucdr (ucons 0 (couple 1 2))))))
+(display (map uforce (list
+                      (ucar (single 1))
+                      (ucar (couple 1 2)))))
+#+end_src
+
+#+RESULTS:
+: (() (#<procedure:one>) (1 2) (1) (0 1 2) (1 2))(1 1)
+
+*** recursion
+
+#+begin_src
+fix = λf. (λx. f (λy. x x y)) (λx. f (λy. x x y))
+    ⇒ λf. f (λy. (λx. f (λz. x x z)) (λx. f (λz. x x z)) y)
+    ⇒ λf. f (λy. (fix f) y)
+
+    ⇒ λf. f (λa1. f (λa2. f (λa3. ... f (λan. (λx. f (λy. x x y)) (λx. f (λy. x x y)) an) ... a3) a2) a1)
+#+end_src
+
+#+begin_src scheme :noweb-ref utlc-fix
+(define (fix f) ((lambda (x) (f (lambda (y) ((x x) y)))) (lambda (x) (f (lambda (y) ((x x) y))))))
+#+end_src
+
+#+begin_src scheme :noweb-ref utlc
+<<utlc-list>>
+<<utlc-fix>>
+#+end_src
+
+#+begin_src scheme
+<<utlc>>
+(define fact (lambda (fct) (lambda (n)
+                (if (= n 0) 1 (* n (fct (- n 1)))))))
+(display ((fix fact) 5))
+#+end_src
+
+#+RESULTS:
+: 120
+
+*** 5.2.9
+
+Evaluation order. `test` in lambda-calculus is evaluates call-by-value, but `if` in NB is not.
+
+#+begin_src scheme
+<<utlc>>
+(define fact (lambda (f) (lambda (n)
+              ((test (equal n zero) (lambda () one) (lambda () (times n (f (prd n)))))))))
+(display (church->int ((fix fact) (int->church 5))))
+#+end_src
+
+#+RESULTS:
+: 120
+
+*** 5.2.10
+
+#+begin_src scheme
+<<utlc>>
+(define (churchnat n)
+  ((fix
+    (lambda (cn) (lambda (i) (if (zero? i) zero (scc (cn (- i 1)))))))
+   n))
+
+(display (church->int (churchnat 7)))
+#+end_src
+
+#+RESULTS:
+: 7
+
+*** 5.2.11
+
+#+begin_src scheme
+<<utlc>>
+(define (sum l)
+  ((fix
+    (lambda (sm) (lambda (xs)
+           (if (utlc->bool (isnil xs)) zero
+               (add ((ucar xs) zero) (sm (ucdr xs)))))))
+   l))
+(display (church->int (sum (ucons one (ucons two nil)))))
+#+end_src
+
+#+RESULTS:
+: 3
+
+Another verison:
+
+#+begin_src scheme
+<<utlc>>
+(define (sum l) (foldr (lambda (a) (lambda (b) (add a b))) l zero))
+(display (church->int (sum (ucons one (ucons two nil)))))
+#+end_src
+
+#+RESULTS:
+: 3
+
+** 5.3 Formalities
+
+*** 5.3.6
+
+Adapt utlc rules to describe the other three strategies for evaluation—full beta-reduction, normal-order, and lazy evaluation.
+
+call-by-value:
+
+#+begin_src
+t_1 -> t_1'
+-------------------         (E-App1)
+t_1 t_2 -> t_1' t_2
+
+t_2 -> t_2'
+-------------------         (E-App2)
+v_1 t_2 -> v_1 t_2'
+
+
+(λx.t_1) v -> [x ↦ v]t_1   (E-AppAbs)
+#+end_src
+
+`E-App1` defines the order of evalating `t u v w` is `((t u) v) w`.
+
+full beta-reduction:
+
+#+begin_src
+t_1 -> t_1'
+-------------------             (E-App1)
+t_1 t_2 -> t_1' t_2
+
+t_2 -> t_2'
+-------------------             (E-App2)
+t_1 t_2 -> t_1 t_2'
+
+
+(λx.t_1) t_2 -> [x ↦ t_2]t_1    (E-AppAbs)
+
+t_1 -> t_1'
+-----------------               (E-Body)
+λx.t_1 -> λx.t_1'
+#+end_src
+
+`E-App1` and `E-App2` implies arbitrary evaluation order of beta-reduction. Or, associativity of reduction operation on two terms.
+
+normal-order:
+
+#+begin_src
+t_1 -> t_1'
+-------------------         (E-App1)
+t_1 t_2 -> t_1' t_2
+
+
+v_1 -> λx.t_1
+-----------------------     (E-AppAbs)
+v_1 t_2 -> [x ↦ t_2]t_1
+
+t -> t'
+-------------               (E-Body)
+λx.t -> λx.t'
+#+end_src
+
+lazy evaluation:
+
+#+begin_src
+t_1 -> t_1'
+-------------------             (E-App1)
+t_1 t_2 -> t_1' t_2
+
+
+(λx.t_1) t_2 -> [x ↦ t_2]t_1    (E-AppAbs)
+#+end_src
+
+*** 5.3.7
+
+Extend `wrong` semantics in Exercise 3.5.16 to λNB.
+
+Only for λ, I come up with a interesting rule:
+
+#+begin_src
+t_1 -> t_1
+------------    (E-NoLoop)
+t_1 -> wrong
+#+end_src
+
+This prevents evaluating `(λx. x x) (λx. x x)` endlessly. And this can't prevent endless recusion such as `fix (λid.λx. id x) ANYTHING`.
+
+*** 5.3.8
+
+full beta-reduction:
+
+#+begin_src
+t ⇓ t'
+------------                    (B-Body)
+λx.t ⇓ λx.t'
+
+[x ↦ t_2]t_1 ⇓ v
+----------------                (B-App1)
+(λx.t_1) t_2 ⇓ v
+
+t_2 ⇓ v_2  [x ↦ v_2]t_1 ⇓ v_3
+-----------------------------   (B-App2)
+(λx.t_1) t_2 ⇓ v_3
+#+end_src
+
