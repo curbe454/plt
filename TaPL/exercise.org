@@ -3,6 +3,8 @@
 #+property: header-args:ocaml :results value
 #+property: header-args:scheme :session *scheme-exercise*
 
+Some notes about the book. I will do some of the exercises but not all.
+
 * 4 An ML Implementation of Arithmetic Expressions
 
 * 5 The Untyped Lambda-Calculus
@@ -612,3 +614,155 @@ t_2 ⇓ v_2  [x ↦ v_2]t_1 ⇓ v_3
 (λx.t_1) t_2 ⇓ v_3
 #+end_src
 
+* 6
+
+*** 6.1.1
+
+Use de Bruijn index(indices) to encode below lambda expressions.
+
+#+begin_src
+c0 = λs. λz. z
+c2 = λs. λz. s (s z)
+plus = λm. λn. λs. λz. m s (n z s)
+fix = λf. (λx. f (λy. (x x) y)) (λx. f (λy. (x x) y))
+foo = (λx. (λx. x)) (λx. x)
+#+end_src
+
+#+begin_src
+c0 = λ. λ. 0
+c2 = λ. λ. 1 (1 0)
+plus = λ. λ. λ. λ. 3 1 (2 0 1)
+fix = λ. (λ. 2 (λ. (1 1) 0)) (λ. 2 (λ. (1 1) 0))
+foo = (λ. λ. 0) (λ. 0)
+#+end_src
+
+*** 6.1.4
+
+Give a more generative definition of de Bruijn encoding lambda expressions like in Book 3.2.3, and show the equivalence to the definition in book.
+
+#+begin_src draft
+Nx contains first (x+1) elements of natural number sequence.
+
+S0 = N0 ∪ {λ.t | t ∈ T1}
+S1 = N1 ∪ {λ.t | t ∈ T2}
+T1 = S1 ∪ {(t1 t2) | t1, t2 ∈ S1} ∪ {(t1 t2) | t1, t2 ∈ T1}
+                                  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+#+end_src
+
+#+begin_src draft
+For the largest natural number (ω+1) in natural number set N (or N_{ω+1}), there is
+
+T_{ω+1} = N ∪ gen_λ(N)
+
+where gen_λ is do any possible combination in any times by lambda application.
+E.g. gen_λ({0,1,2}) = {0, (0 0), (0 0 0), (0 (0 0)), (0 0 0 0), ..., 1,  (0 1), (1 0), (1 1), (0 0 1), (0 (0 1)), (1 (1 0)), (1 1 0), ..., 2, (0 2), (2 0), (2 2), (1 2), (2 1), (0 0 2), (0 (0 2)), (1 1 2), (1 (1 2)), ...}.
+
+T_ω = T_{ω+1} ∪ {λ.x | x ∈ T_{ω+1}} \ {ω+1}
+#+end_src
+
+#+begin_src draft
+If T_0 \ {0} is a set that contains all legal lambda expressions which contains no free variables, then
+
+T_{n+1} = N_n ∪ {strip(x) | x ∈ T_n}, where
+
+strip x =
+  { x, x is not lambda expession
+  { t, x = λ.t
+#+end_src
+
+*** 6.1.5
+
+1. Define a function removenames_Γ (t) that takes a naming context Γ and
+an ordinary term t (with FV(t) ⊆ dom(Γ)) and yields the corresponding
+nameless term.
+
+I don't really know what's the mean... I just write some pseudo codes.
+
+#+begin_src ocaml :results none
+let rec removenames gamma t =
+  match t with
+  | Apply (u, v)  -> NApply (nameless_from m u, nameless_from m v)
+  | Lambda (n, u) -> NLambda (nameless_from m u)
+  | Name s        -> NName (lookupV gamma s)
+#+end_src
+
+2. Define a function restorenames_Γ (t) that takes a nameless term t and a
+naming context Γ and produces an ordinary term.
+
+The pair of functions should be mutually inverse operations for each term.
+
+#+begin_src ocaml :results none
+let rec restorenames gamma t =
+  match t with
+  | NApply (u, v) -> Apply (restorenames u, restorenames v)
+  | NLambda  (u)  -> Lambda (lookupK !gamma @@ depth u, restorenames u)
+  | NName n       -> Name (begin
+                           match lookupK_opt n with
+                           | Some s -> s
+                           | None   -> let _ = add_record gamma n in
+                                        lookupK !gamma n
+                          end)
+#+end_src
+
+No way to test them unless I implement the whole system... Maybe I should not do these kind of exercises then.
+
+*** 6.2.2
+
+1. What is ↑^2 (λ.λ. 1 (0 2))?
+
+   = λ. ↑^2_1 (λ. 1 (0 2)) = λ.λ. ↑^2_2 (1 (0 2)) = λ.λ. 1 (0 4)
+
+2. What is ↑^2 (λ. 0 1 (λ. 0 1 2))?
+
+   = λ. ↑^2_1 (0 1 (λ. 0 1 2)) = λ. 0 3 (↑^2_1 (λ. 0 1 2)) = λ. 0 3 (λ. ↑^2_2 (0 1 2)) = λ. 0 3 (λ. 0 1 4)
+
+***  6.2.5
+
+Convert the following uses of substitution to nameless form, assuming the global context is Γ = a,b, and calculate their results using the definition in book.
+
+1. [b ↦ a] (b (λx.λy.b))
+
+   = a (λx.λy.a) = 1 (λ.λ.3)
+
+   [0 ↦ 1] (0 (λ.λ.2)) = 1 (λ.λ.[2 ↦ ↑^1(↑^1 (1))](0)) = 1 (λ.λ.3)
+
+2. [b ↦ a (λz.a)] (b (λx.b))
+
+   = a (λz.a) (λx.a (λz.a)) = 1 (λ.2) (λ.2 (λ.3))
+
+   [0 ↦ 1 (λ.2)] (0 (λ.1)) = 1 (λ.2) (λ. [1 ↦ 2 (λ. 3)](1)) = 1 (λ.2) (2 (λ.3))
+
+3. [b ↦ a] (λb. b a)
+
+   = λa. a c = λ. 0 2
+
+   [0 ↦ 1] (λ. 0 1) = λ. [1 ↦ ↑^1(1)] (0 1) = λ. [1 ↦ 2](0 1) = λ. 0 2
+
+4. [b ↦ a] (λa. b a)
+
+   = λc. a c = λ. 2 0
+
+   [0 ↦ 1] (λ. 1 0) = λ.[1 ↦ 2] (1 0) = λ. 2 0
+
+*** 6.2.6
+
+The description in the book is kind of puzzling for me at first. In other words, it's to say that numbers of free variables can't be increased by substitution on bound variables.
+
+An example is `[z ↦ (λy.y c d)](λz.z a b)`, which evals to `λz.z a b` other than `λ(λy.c d).(λy.c d) a b`.
+
+*** 6.3.1
+
+0-term so it won't be affected by uparrow shift. Coincidentally, what we want to do is to shift all the free variables by `-1`!
+
+*** 6.3.2
+
+This only changes the expression of bound variables. So the `λ.t v -> ↑^{-1}[0 ↦ ↑^1(v)]t  (E-AppAbs)` doesn't change.
+
+Now I know what's the meaning of Exercise 6.1.5.
+
+#+begin_src ocaml :results none
+let rec nameless gamma = function
+  | name         -> lookupV gamma name
+  | λname.t      -> λ. (nameless (assign_or_add gamma name) t)
+  | Apply (s, t) -> nApply (nameless gamma s) (nameless gamma t)
+#+end_src
