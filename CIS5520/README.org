@@ -1,3 +1,5 @@
 #+title: Readme
 
 CIS5520 2024 fall: [[https://www.engineering.upenn.edu/~cis5520/current/schedule.html]]
+
+Github repos: [[https://github.com/upenn-cis5520]]
