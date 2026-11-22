@@ -67,10 +67,25 @@ myFoldl f acc = foldr (flip f) acc . reverse
 
 myFoldl' :: (a -> b -> a) -> a -> [b] -> a
 myFoldl' f z xs = foldr (\x k z' -> k (f z' x)) id xs z
--- :: (a -> b) -> b -> b -> [a] -> b
--- :: (a -> (c -> c)) -> (c -> c) -> (c -> c) -> [a] -> (c -> c)
--- :: (a -> (? -> b) -> [a] -> b) -> b -> b -> [a] -> b
--- TODO: this means recusive type.
+-- foldl :: (b -> a -> b) -> b -> [a] -> b
+-- foldr :: (a -> b -> b) -> b -> [a] -> b
+--
+--
+-- foldr (\x k z' -> k (f z' x)) id xs z
+-- f :: (b -> a -> b)
+-- xs :: [a]
+-- z :: b
+-- z' :: b
+-- x :: a
+-- (\x k z' -> k (f z' x)) :: a -> (b -> ?) -> b -> ?
+-- (\x k z' -> k (f z' x)) :: a -> (b -> b) -> (b -> b)
+-- id :: b -> b
+--
+--
+-- foldr (\x k z' -> k (f z' x)) id xs :: b -> b
+-- foldr (\x k z' -> k (f z' x)) id :: [a] -> b -> b
+-- foldr (\x k z' -> k (f z' x)) :: (b -> b) -> [a] -> b -> b
+-- NOTE: fold a mapping function (b -> b) and then apply it on z.
 
 
 {- Exercise 4 -}
