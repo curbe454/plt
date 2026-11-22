@@ -108,10 +108,16 @@ Now implement using foldr
 -- >>> all (>0) ([1 .. 20] :: [Int])
 -- True
 all :: (a -> Bool) -> [a] -> Bool
-all p = undefined
+all p = foldr (\x z -> p x && z) True
 
 {-
 And trace through an evaluation `all not [True,False]`:
+        all (<3) [1..5] = foldr (\x z -> x < 3 && z) True [1..5]
+        = 1 < 3 && foldr (\x z -> x < 3 && z) True [2..5]
+        = 1 < 3 && 2 < 3 && foldr (\x z -> x < 3 && z) True [3..5]
+        = ...
+        = 1 < 3 && 2 < 3 && 3 < 3 && 4 < 3 && 5 < 3 && True
+        = False
 
 (Also available from [online tool](http://bm380.user.srcf.net/cgi-bin/stepeval.cgi?expr=let+all+p+%3D+foldr+%28%5Cx+y+-%3E+p+x+%26%26+y%29+True+in%0D%0Aall+not+%5BTrue%2CFalse%5D+%0D%0A++%0D%0A).)
 
@@ -129,6 +135,12 @@ last1 (x : xs) = case xs of
   [] -> Just x
   _ -> last1 xs
 
+last1' :: [a] -> Maybe a
+last1' xs = case xs of
+  []     -> Nothing
+  (x:[]) -> Just x
+  _      -> last1 xs
+
 {-
 Now implement using foldr
 -}
@@ -138,10 +150,21 @@ Now implement using foldr
 -- >>> last ""
 -- Nothing
 last :: [a] -> Maybe a
-last = undefined
+last = foldr (\x z -> if isNothing z then Just x else z) Nothing
+
+isNothing :: Maybe a -> Bool
+isNothing Nothing = True
+isNothing _       = False
 
 {-
-and trace through the evaluation `last [1,2]`
+and trace through the evaluation `last [1,2]`:
+        last [1,2] = foldr (\x z -> if isNothing z then Just x else z) Nothing [1,2]
+        = if isNothing (foldr ... Nothing [2]) then Just 1 else (foldr ... Nothing [2])
+        = if isNothing z1@(if isNothing (foldr ... Nothing []) then Just 2 else (foldr ... Nothing [])) then Just 1 else z1
+        = ...
+        = if isNothing (if isNothing Nothing then Just 2 else Nothing) then Just 1 else (if isNothing Nothing then Just 2 else Nothing)
+        = if isNothing (Just 2) then Just 1 else Just 2
+        = Just 2
 
 Filter
 -----
@@ -152,14 +175,21 @@ of the first list for which the input function returns `True`.
 -}
 
 filter :: (a -> Bool) -> [a] -> [a]
-filter p = undefined
+filter p = foldr (\x z -> if p x then x:z else z) []
 
 -- >>> filter (> 10) [1 .. 20]
-
--- >>> filter (\l -> sum l <= 42) [10,20], [50,50], [1..5] ]
+-- [11,12,13,14,15,16,17,18,19,20]
+-- >>> filter (\l -> sum l <= 42) [ [10,20], [50,50], [1..5] ]
+-- [[10,20],[1,2,3,4,5]]
 
 {-
-Trace the evaluation of `filter (>2) [2,3]`
+Trace the evaluation of `filter (>2) [2,3]`:
+        = foldr (\x z -> if x > 2 then x:z else z) [] [2,3]
+        = if 2 > 2 then 2:z1@(foldr (\x z -> if x > 2 then x:z else z) [] [3]) else z1
+        = if 2 > 2 then 2:z1@(if 3 > 2 then 3:z2@(foldr (\x z -> if x > 2 then x:z else z) [] []) else z2) else z1
+        = if 2 > 2 then 2:z1@(if 3 > 2 then 3:[] else []) else z1
+        = if 2 > 2 then 2:[] else []
+        = []
 -}
 
 {-
@@ -182,7 +212,7 @@ Now rewrite this function using 'foldr'
 -}
 
 reverse :: [a] -> [a]
-reverse l = undefined
+reverse l = foldr (\x k z -> k $ x:z) id l []
 
 -- >>> reverse "abcd"
 -- "dcba"
@@ -192,6 +222,25 @@ reverse l = undefined
 
 {-
 And trace through its evaluation on the list `['a','b','c']`:
+        = foldr f@(\x k z -> k (x : z)) id "abc" []
+        = (\k1 z1 -> k1 ('a' : z1)) (foldr f id "bc") []
+                                -- = (\z1 -> (foldr f id "bc") ('a' : z1)) []
+                                -- = (foldr f id "bc") ('a' : [])
+                                -- = foldr f id "bc" "a"
+        = (\k1 z1 -> k1 ('a' : z1)) ((\k2 z2 -> k2 ('b' : z2)) (foldr f id "c")) []
+        = (\k1 z1 -> k1 ('a' : z1)) ((\k2 z2 -> k2 ('b' : z2)) ((\k3 z3 -> k3 ('c' : z3)) (foldr f id ""))) []
+                                -- = (\k1 z1 -> k1 ('a' : z1)) ((\k2 z2 -> k2 ('b' : z2)) ((\k3 z3 -> k3 ('c' : z3)) id)) []
+                                -- = (\k1 z1 -> k1 ('a' : z1)) ((\k2 z2 -> k2 ('b' : z2)) (\z3 -> id ('c' : z3))) []
+                                -- = (\k1 z1 -> k1 ('a' : z1)) (\z2 -> (\z3 -> 'c' : z3) ('b' : z2)) []
+                                -- = (\k1 z1 -> k1 ('a' : z1)) (\z2 -> ('c' : 'b' : z2)) []
+                                -- = (\z1 -> ('c' : 'b' : 'a' : z1))  []
+                                -- = ['c','b','a']
+        = (\k1 z1 -> k1 ('a' : z1)) ((\k2 z2 -> k2 ('b' : z2)) (\z3 -> (foldr f id "") ('c' : z3))) []
+        = (\k1 z1 -> k1 ('a' : z1)) (\z2 -> (\z3 -> (foldr f id "") ('c' : z3)) ('b' : z2)) []
+        = (\z1 -> (\z2 -> (\z3 -> (foldr f id "") ('c' : z3)) ('b' : z2)) ('a' : z1))  []
+        = (\z1 -> (\z2 -> (foldr f id "") ('c' : ('b' : z2))) ('a' : z1))  []
+        = (\z1 -> (foldr f id "") ('c' : ('b' : ('a' : z1))))  []
+        = (\z1 -> 'c' : 'b' : 'a' : z1)  []
 -}
 
 {-
@@ -221,7 +270,7 @@ Now rewrite using 'foldr'
 -}
 
 intersperse :: a -> [a] -> [a]
-intersperse = undefined
+intersperse a = foldr (\x z -> if null z then x:z else x:a:z) []
 
 -- >>> intersperse ',' "abcde"
 -- "a,b,c,d,e"
@@ -230,7 +279,7 @@ intersperse = undefined
 -- ""
 
 {-
-and trace through an example of `intersperse ',' "ab"`
+and trace through an example of `intersperse ',' "ab"`: omit.
 -}
 
 {-
@@ -263,11 +312,14 @@ But, you can also define `foldl` in terms of `foldr`. Give it a try.
 -}
 
 foldl :: (b -> a -> b) -> b -> [a] -> b
-foldl f z xs = undefined
+foldl f z xs = foldr (\x k z' -> k (f z' x)) id xs z
+-- foldl f z xs = foldr (\x k -> (\z' -> k (f z' x))) id xs z
 
 -- >>> foldl (++) "x" ["1", "2", "3"]
 -- "x123"
 
 {-
 And trace through the test case above.
+
+See trace example of `reverse`.
 -}
