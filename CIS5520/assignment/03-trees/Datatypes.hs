@@ -100,7 +100,7 @@ will arrive by "two day shipping":
 -}
 
 twoBusinessDays :: Day -> Day
-twoBusinessDays d = undefined
+twoBusinessDays d = nextWeekday (nextWeekday d)
 
 {-
 Shapes
@@ -306,7 +306,7 @@ Now, rewrite this function using selectors `x` and `y`:
 -}
 
 distFromOrigin' :: Point -> Double
-distFromOrigin' p = undefined
+distFromOrigin' p = sqrt (x p * x p + y p * y p)
 
 {-
 Which version is easier to read? Opinions differ.
@@ -351,7 +351,7 @@ point3 = point1 {x = 2.0}
 {-
    This syntax is called *record update*. It is a purely functional way to
    create a new record value by reusing the components of an existing record.
-   Above, `point3` is a `Point with `x` component equal to 2.0, and all other
+   Above, `point3` is a `Point` with `x` component equal to 2.0, and all other
    components (which is only `y` here) the same as `point1`. When records have
    many components, this can be a very useful feature.
 
@@ -402,7 +402,8 @@ of `head` is not partial like the one for regular lists.)
 -- >>> safeHead oneTwoThree
 -- 1
 safeHead :: IntListNE -> Int
-safeHead = undefined
+safeHead (ISingle v) = v
+safeHead (ICons v _) = v
 
 {-
 We can define functions by recursion on `IntListNE`s too, of course. Write a function
@@ -412,7 +413,8 @@ to calculate the sum of a non-empty list of integers.
 -- >>> sumOfIntListNE oneTwoThree
 -- 6
 sumOfIntListNE :: IntListNE -> Int
-sumOfIntListNE = undefined
+sumOfIntListNE (ISingle v)  = v
+sumOfIntListNE (ICons v xs) = v + sumOfIntListNE xs
 
 {-
 Polymorphic Datatypes
@@ -449,7 +451,7 @@ justTrue :: Maybe Bool
 justTrue = Just True
 
 justThree :: Maybe Int
-justThree = undefined
+justThree = Just 3
 
 {-
 A number of other polymorphic datatypes appear in the standard
@@ -516,7 +518,8 @@ We can write simple functions on trees by recursion:
 -- >>> treePlus (Branch 2 Empty Empty) 3
 -- Branch 5 Empty Empty
 treePlus :: Tree Int -> Int -> Tree Int
-treePlus = undefined
+treePlus Empty _          = Empty
+treePlus (Branch x l r) n = Branch (x+n) (treePlus l n) (treePlus r n)
 
 {-
 We can accumulate all of the elements in a tree into a list:
@@ -536,14 +539,32 @@ infixOrder (Branch x l r) = infixOrder l ++ [x] ++ infixOrder r
 -- [5,2,1,4,9,7]
 
 prefixOrder :: Tree a -> [a]
-prefixOrder = undefined
+prefixOrder Empty = []
+prefixOrder (Branch x l r) = [x] ++ prefixOrder l ++ prefixOrder r
 
 {-
 (NOTE: This is a simple way of defining a tree walk in Haskell, but it is not
 the best way. In particular, the `infixOrder` function is *not* linear in the
 number of nodes in the tree. Why?  Can you think of a way to rewrite
 `infixOrder` so that it runs in linear time?)
+-}
 
+-- >>> infixOrder' exTree
+-- [1,2,4,5,9,7]
+
+infixOrder' :: Tree a -> [a]
+infixOrder' Empty = []
+infixOrder' (Branch x l r) = partial l (x : infixOrder' r)
+  where partial Empty          = id
+        partial (Branch v a b) = partial a . (v:) . partial b
+
+-- A better version I found somewhere:
+infixOrder'' :: Tree a -> [a]
+infixOrder'' t = go t []
+  where go Empty          = id
+        go (Branch x l r) = go l . (x:) . go r
+
+{-
 But, of course, what we should really do is reimplement our
 higher-order patterns for trees!
 -}
