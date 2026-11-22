@@ -85,7 +85,10 @@ foldl f = go
     go acc (x : xs) = go (acc `f` x) xs
 
 foldlFlip :: (a -> b -> b) -> b -> [a] -> b
-foldlFlip f = undefined
+foldlFlip f = go
+  where
+    go acc [] = acc
+    go acc (x:xs) = go (x `f` acc) xs
 
 sum1' :: [Int] -> Int
 sum1' = foldr (+) 0
@@ -95,10 +98,6 @@ sum2' = foldrFlip (+) 0
 
 sum3' :: [Int] -> Int
 sum3' = foldl (+) 0
-
-{-
-
--}
 
 sum4' :: [Int] -> Int
 sum4' = foldlFlip (+) 0
@@ -111,12 +110,13 @@ results will be the same.
 -}
 
 -- >>> foldr (:) [] [1,2,3]
-
+-- [1,2,3]
 -- >>> foldrFlip (flip (:)) [] [1,2,3]
-
+-- [1,2,3]
 -- >>> foldl (flip (:)) [] [1,2,3]
-
+-- [3,2,1]
 -- >>> foldlFlip (:) [] [1,2,3]
+-- [3,2,1]
 
 {-
 On the other hand, the `(-)` operator is both
@@ -125,12 +125,13 @@ so again the results will be different.
 -}
 
 -- >>> foldr (-) 0 [1,2,3]
-
+-- 2
 -- >>> foldrFlip (-) 0 [1,2,3]
-
+-- -6
 -- >>> foldl (-) 0 [1,2,3]
-
+-- -6
 -- >>> foldlFlip (-) 0 [1,2,3]
+-- 2
 
 {-
 Tail Recursion
@@ -234,18 +235,18 @@ g1 x y = if x > 0 then sum1 [1 .. y * 100000] else sum2 [1 .. y * 100000]
 
 -- Call h1 with same argument multiple times.
 u1 :: Int
-u1 = h1 1 + h1 1 + h1 1
+u1 = h1 5 + h1 5 + h1 5
 
 -- Call f1 with same and different arguments multiple times.
 v1 :: Int
-v1 = f1 0 1 + f1 1 1 + f1 2 1
+v1 = f1 0 5 + f1 1 5 + f1 2 5
 
 v2 :: Int
-v2 = f1 0 1 + f1 0 1 + f1 0 1
+v2 = f1 0 5 + f1 0 5 + f1 0 5
 
 -- Call g1 with same and different arguments multiple times.
 w1 :: Int
-w1 = g1 0 1 + g1 1 1 + g1 2 1
+w1 = g1 0 5 + g1 1 5 + g1 2 5
 
 w2 :: Int
-w2 = g1 0 1 + g1 0 1 + g1 0 1
+w2 = g1 0 5 + g1 0 5 + g1 0 5
